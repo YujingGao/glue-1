@@ -134,6 +134,7 @@ CurrentGenotypeFile<-paste(GD, "/SWCER047.cul", sep="");
 }else if  (CropName == "WH")
 {
 CurrentGenotypeFile<-paste(GD, "/WHCER047.CUL", sep="");
+CurrentGenotypeFile<-paste(GD, "/WHCER047.CUL", sep="")
 }else if  (CropName == "BA")
 {
 CurrentGenotypeFile<-paste(GD, "/BACER047.CUL", sep="");

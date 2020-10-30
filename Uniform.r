@@ -12,6 +12,19 @@ CultivarID<-paste('^',CultivarID, sep="");
 LineNumber<-grep(pattern=CultivarID, GenotypeFile);
 OldLine<-GenotypeFile[LineNumber];#Get the line according to the line number.
 
+#get the ecotype file
+ecotypename = substr(OldLine,31,36)
+eval(parse(text=paste('EcotypeFilePath="',GD,'/',GenotypeFileName,'.ECO"',sep = '')));
+readline = readLines(EcotypeFilePath)
+oldline_eco = readline[stringr::str_which(readline,ecotypename)]
+title_eco = readline[stringr::str_which(readline,"@ECO")]
+
+df_eco = read.table(textConnection(oldline_eco),header = F)
+header = read.table(textConnection(title_eco),header = F,comment.char = "")
+header = unlist(strsplit(apply(header,FUN = as.character,MARGIN = 1 ),"\\.."))
+colnames(df_eco) = header
+
+
 if(CropName != "SC")
 {
   Step=6;
@@ -27,7 +40,7 @@ if(CropName != "SC")
 
 DefaultValue<-c();
 
-for (i in 1:TotalParameterNumber)
+for (i in 1:7)
 {
 ValueStart<-ValueStart+Step;
 ValueEnd<-ValueEnd+Step;
@@ -35,6 +48,11 @@ ValueEnd<-ValueEnd+Step;
 ParameterValue<-as.numeric(substr(OldLine, ValueStart, ValueEnd));
 DefaultValue<-cbind(DefaultValue, ParameterValue);
 }
+
+
+EcotypeValue<-df_eco[1,c("P1","P2","P3","P4","PARUE","PARU2","SLAS","HTSTD","KCAN")];
+DefaultValue<-cbind(DefaultValue, EcotypeValue);
+
 
 #Read the initial genotype file so as to read the default values for each parameters.
 
@@ -122,7 +140,7 @@ if (GLUEFlag==1)
     }
 }
  
-GenerateParameter<-runif(NumberOfModelRun,min=Minimum,max=Maximum);
+GenerateParameter<-runif(NumberOfModelRun,min=as.numeric(Minimum),max=as.numeric(Maximum));
 MatrixGeneratedParameter<-matrix(GenerateParameter, nrow=NumberOfModelRun, ncol=1, byrow=T);
 ParameterMatrix<-cbind(ParameterMatrix, MatrixGeneratedParameter);
 

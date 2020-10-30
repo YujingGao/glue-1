@@ -1,16 +1,17 @@
-#Change the genotype file of crops in DSSAT.
+#Change the genotype and ecotype file of crops in DSSAT.
 
-GenotypeChange<-function(GD, DSSATD, OD, CropName, GenotypeFileName, CultivarID, TotalParameterNumber, RunNumber, RandomMatrix)
+GenotypeChange<-function(GD, DSSATD, OD, CropName, GenotypeFileName, CultivarID, TotalParameterNumber, ModelRunNumber, RandomMatrix)
 {
 eval(parse(text=paste('GenotypeFilePath="',GD,'/',GenotypeFileName,'.CUL"',sep = '')));
-
 ReadLine<-readLines(GenotypeFilePath, n=-1)
 GenotypeFile<-as.character(ReadLine); #Get the genotype file saved as a template.
 
 LineNumber<-grep(pattern=CultivarID, GenotypeFile); #Get the number of the line where the cultivar "GLUECUL" is located.
 OldLine<-GenotypeFile[LineNumber];#Get the line according to the line number.
 
-R<-RunNumber;#Get what parameter set will be used to change the genotype file.
+EcotypeName = substr(OldLine, 31, 36)
+
+R<-ModelRunNumber;#Get what parameter set will be used to change the genotype file.
 
 if (CropName != "SC")
 {
@@ -18,7 +19,7 @@ if (CropName != "SC")
   ValuePosition1<-(38-ParameterStep);
   ValuePosition2<-(42-ParameterStep);
 
-  for (i in 1:TotalParameterNumber)
+  for (i in 1:7)
   {
   ValuePosition1<-ValuePosition1+ParameterStep;
   ValuePosition2<-ValuePosition2+ParameterStep;
@@ -60,7 +61,7 @@ if (CropName != "SC")
   ValuePosition1<-(47-ParameterStep); #The initial starting point was 42, but it was changed to 46 since "EXPNO" was added by Cheryl recently.
   ValuePosition2<-(61-ParameterStep); #The initial ending point was 47, but it is 51 now.
 
-  for (i in 1:TotalParameterNumber)
+  for (i in 1:7)
   {
   ValuePosition1<-ValuePosition1+ParameterStep;
   ValuePosition2<-ValuePosition2+ParameterStep;
@@ -79,8 +80,6 @@ if (CropName != "SC")
   {
   ParameterFormat<-sprintf('%3.1f', Parameter);
   } else
-  
-  # chp - how to get format xxxx. (with nothing past the ".") ?
   {
   ParameterFormat<-sprintf('%4.0f', Parameter);
   }
@@ -96,19 +95,60 @@ if (CropName != "SC")
 
   GenotypeFile[LineNumber]<-OldLine;#Replace the old line with new generated line in the Genotype file.
   
-  eval(parse(text=paste('ECOFilePath="',GD,'/SCCAN047.ECO"',sep = '')));
-  ReadLine<-readLines(ECOFilePath, n=-1)
-  ECOFile<-as.character(ReadLine);
-  #Get the ECO file from the Genotype directory.
-  
-  eval(parse(text=paste("NewECOFilePath='",OD,"/SCCAN047.ECO'",sep = '')));
-  write(ECOFile, file=NewECOFilePath);
-  #Save the ECO file in the GLWork directory. 
 }
+
+#update ecotype file with new line of random matrix
+eval(parse(text=paste('EcotypeFilePath="',GD,"/",GenotypeFileName,'.ECO"',sep = '')));
+EcotypeFile = readLines(EcotypeFilePath)
+oldline_eco = EcotypeFile[stringr::str_which(EcotypeFile,EcotypeName)]
+title_eco = EcotypeFile[stringr::str_which(EcotypeFile,"@ECO")]
+
+LineNumber_eco = stringr::str_which(EcotypeFile,EcotypeName)
+
+df_eco = read.table(textConnection(oldline_eco),header = F)
+header = read.table(textConnection(title_eco),header = F,comment.char = "")
+header = unlist(strsplit(apply(header,FUN = as.character,MARGIN = 1 ),"\\.."))
+colnames(df_eco) = header
+# print(df_eco)
+
+Ecoparameter_cali = c("P1","P2","P3","P4","PARUE","PARU2","SLAS","HTSTD","KCAN")
+OldValue_eco = df_eco[1,Ecoparameter_cali]
+
+#change these values: stringr::str_locate(title_eco,"HTSTD")
+Loca1 = c(9,21,27,45,57,63,99,159,171)
+Loca2 = c(12,24,30,48,60,66,102,162,174)
+
+NewValue_eco = c()
+for (iEcoPara in 1:length(Ecoparameter_cali)){
+  
+  thisEcoPara = RandomMatrix[R,(iEcoPara+7)]
+  
+  if(thisEcoPara>=0 & thisEcoPara<10)
+  {
+    singleEcoPara = sprintf('%1.2f', thisEcoPara)
+  }else if(thisEcoPara>=10 & thisEcoPara<100){
+    singleEcoPara = sprintf('%2.2f', thisEcoPara)
+  }else if(thisEcoPara>=100 & thisEcoPara<1000){
+    singleEcoPara = sprintf('%4.0f', thisEcoPara)
+  }else {
+    singleEcoPara = sprintf('%4i', thisEcoPara)
+  }
+  NewValue_eco = c(NewValue_eco, singleEcoPara)
+  
+  substr(oldline_eco, Loca1[iEcoPara], Loca2[iEcoPara])<- '    ';# Delete initial values.
+  substr(oldline_eco, Loca1[iEcoPara], Loca2[iEcoPara])<- singleEcoPara;
+  
+}
+
+EcotypeFile[LineNumber_eco]<-oldline_eco;#Replace the old line with new generated line in the Ecotype file.
+
                                                    
 eval(parse(text=paste("NewGenotypeFilePath='",OD,"/",GenotypeFileName,".CUL'",sep = '')));
 write(GenotypeFile, file=NewGenotypeFilePath);
 #Save the new genotype file as "cul" file in the GLWork directory.
+
+eval(parse(text=paste("NewEcotypeFilePath='",OD,"/",GenotypeFileName,".ECO'",sep = '')));
+write(EcotypeFile, file=NewEcotypeFilePath);
 
 }
 
